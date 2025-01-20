@@ -1,0 +1,74 @@
+[
+  {
+
+    "name":"Abhishek bachan",
+    "email":"abhishek@gmail.com",
+    "password":"1234",
+    "profileImage":"https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS8-v87dGgADd6P5E2WC_kzxjLlp_mlF-86Mw&s"
+  },
+  {
+
+    "name":"Abhishek ",
+    "email":"abhishek2@gmail.com",
+    "password":"1234",
+    "profileImage":"https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&dpr=1&w=500"
+  },
+
+  {
+
+    "name":"Rahul bachan",
+    "email":"rahul@gmail.com",
+    "password":"1234",
+    "profileImage":"https://t3.ftcdn.net/jpg/02/70/80/44/360_F_270804457_0IK5O61qgIWAYUXIYWeBBaSFaKngjysa.jpg"
+  }
+,
+  {
+
+    "name":"Shubham",
+    "email":"shu@gmail.com",
+    "password":"1234",
+    "profileImage":"https://static.vecteezy.com/system/resources/thumbnails/033/168/339/small_2x/a-young-black-man-in-a-suit-and-tie-ai-generative-free-photo.jpg"
+  },
+  {
+
+    "name":"Aryan",
+    "email":"Aryan@gmail.com",
+    "password":"1234",
+    "profileImage":"https://images.ctfassets.net/h6goo9gw1hh6/2sNZtFAWOdP1lmQ33VwRN3/24e953b920a9cd0ff2e1d587742a2472/1-intro-photo-final.jpg?w=1200&h=992&fl=progressive&q=70&fm=jpg"
+  },
+  {
+
+    "name":"Tendulkar",
+    "email":"Tendulkar@gmail.com",
+    "password":"1234",
+    "profileImage":"https://static.vecteezy.com/system/resources/thumbnails/033/168/339/small_2x/a-young-black-man-in-a-suit-and-tie-ai-generative-free-photo.jpg"
+  },
+  {
+
+    "name":"Tipu sultan",
+    "email":"Tipu@gmail.com",
+    "password":"1234",
+    "profileImage":"https://static.vecteezy.com/system/resources/thumbnails/033/168/339/small_2x/a-young-black-man-in-a-suit-and-tie-ai-generative-free-photo.jpg"
+  },
+  {
+
+    "name":"Ayana",
+    "email":"Ayana@gmail.com",
+    "password":"1234",
+    "profileImage":"https://static.vecteezy.com/system/resources/thumbnails/033/168/339/small_2x/a-young-black-man-in-a-suit-and-tie-ai-generative-free-photo.jpg"
+  },
+  {
+
+    "name":"Angreh",
+    "email":"Angreh@gmail.com",
+    "password":"1234",
+    "profileImage":"https://static.vecteezy.com/system/resources/thumbnails/033/168/339/small_2x/a-young-black-man-in-a-suit-and-tie-ai-generative-free-photo.jpg"
+  },
+  {
+
+    "name":"Modi",
+    "email":"Modi@gmail.com",
+    "password":"1234",
+    "profileImage":"https://static.vecteezy.com/system/resources/thumbnails/033/168/339/small_2x/a-young-black-man-in-a-suit-and-tie-ai-generative-free-photo.jpg"
+  }
+]
