@@ -137,28 +137,28 @@ const Main = () => {
     };
 
     // Get last message for each user
-   // Get last message for each user
-const getLastMessage = (userId) => {
-    if (!Array.isArray(messages)) {
-        return 'No messages'; // Return a default message if messages is not an array
-    }
+    // Get last message for each user
+    const getLastMessage = (userId) => {
+        if (!Array.isArray(messages)) {
+            return 'No messages'; // Return a default message if messages is not an array
+        }
 
-    const userMessages = messages.filter(
-        (msg) => msg.receiverId === userId || msg.senderId === userId
-    );
-    const lastMessage = userMessages.length > 0 ? userMessages[userMessages.length - 1] : null;
-    return lastMessage ? lastMessage.message : 'Chat with him';
-};
-const getLatetMessage = (userId) => {
-    if (!Array.isArray(messages)) {
-        return 'No messages'; // Return a default message if messages is not an array
-    }
+        const userMessages = messages.filter(
+            (msg) => msg.receiverId === userId || msg.senderId === userId
+        );
+        const lastMessage = userMessages.length > 0 ? userMessages[userMessages.length - 1] : null;
+        return lastMessage ? lastMessage.message : 'Chat with him';
+    };
+    const getLatetMessage = (userId) => {
+        if (!Array.isArray(messages)) {
+            return 'No messages'; // Return a default message if messages is not an array
+        }
 
-    const userMessages = messages.filter(
-        (msg) => msg.receiverId === userId 
-    );
-    const lastestMessage = userMessages.length > 0 ? userMessages[userMessages.length - messages] : null;
-};
+        const userMessages = messages.filter(
+            (msg) => msg.receiverId === userId
+        );
+        const lastestMessage = userMessages.length > 0 ? userMessages[userMessages.length - messages] : null;
+    };
 
 
     // Open image modal
@@ -189,7 +189,7 @@ const getLatetMessage = (userId) => {
                             onPress={() =>
                                 handleSelectUser({ id: item._id, name: item.name, profileImage: item.profileImage })
                             }>
-                            <View style={{ flexDirection: 'row' }}>
+                            <View style={{ flexDirection: 'row', backgroundColor: 'white', padding: 20, borderRadius: 10, marginTop: -20 }}>
                                 <TouchableOpacity onPress={() => openImageModal(item.profileImage, item)}>
                                     <Image
                                         style={{ width: 40, height: 40, borderRadius: 100 }}
@@ -198,7 +198,7 @@ const getLatetMessage = (userId) => {
                                 </TouchableOpacity>
                                 <View style={{ marginLeft: 15 }}>
                                     <Text style={{ fontWeight: 'bold' }}>{item.name}</Text>
-                                    <Text style={{ color: 'green', padding:1, width:240 }}>{lastMessage}</Text>
+                                    <Text style={{ color: 'green', padding: 1, width: 240 }}>{lastMessage}</Text>
                                 </View>
                                 <View style={{ marginLeft: 'auto' }}>
                                     <Entypo style={{ marginTop: 6 }} size={20} name='dots-three-vertical' />
@@ -227,14 +227,16 @@ const getLatetMessage = (userId) => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, marginTop: -50 },
+    container: { flex: 1, marginTop: -40, },
     userItem: { padding: 10, marginVertical: 5, borderRadius: 5 },
     userName: { fontSize: 16 },
     modalBackground: {
         flex: 1,
         justifyContent: 'center',
         alignItems: 'center',
-        backgroundColor: 'rgba(0, 0, 0, 0.505)', // Add semi-transparent black background
+        backgroundColor: 'whitesmoke',
+
+        // Add semi-transparent black background
     },
     fullScreenImage: {
         width: '80%', // Adjust the width as needed

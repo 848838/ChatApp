@@ -4,8 +4,8 @@ import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, Image, A
 import io from 'socket.io-client';
 import { useNavigation } from '@react-navigation/native';
 import moment from 'moment';
-import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
-
+import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons'
+import { ScrollView } from 'react-native-gesture-handler';
 const ChatUser = ({ route }) => {
     const { selectedUser } = route.params;
     const [message, setMessage] = useState('');
@@ -14,6 +14,8 @@ const ChatUser = ({ route }) => {
     const [loading, setLoading] = useState(true);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [selectedMessage, setSelectedMessage] = useState(null);
+    const [emojiVisible, setEmojiVisible] = useState(false);
+
     const flatListRef = useRef(null);
     const navigation = useNavigation();
     let socketRef = useRef(null);
@@ -168,6 +170,7 @@ const ChatUser = ({ route }) => {
                     method: 'DELETE',
                     headers: { Authorization: `Bearer ${token}` },
                 });
+                console.log('deleted id', selectedMessage);
 
                 const data = await response.json();
                 if (data.status === 'ok') {
@@ -175,8 +178,9 @@ const ChatUser = ({ route }) => {
                     setMessages((prevMessages) =>
                         prevMessages.filter((msg) => msg._id !== selectedMessage._id)
                     );
+
                 } else {
-                    console.error('Failed to delete message:', data.message);
+                    console.error('Failed to delete message in the client side :', data.message);
                 }
             } catch (error) {
                 console.error('Error deleting message:', error);
@@ -184,6 +188,7 @@ const ChatUser = ({ route }) => {
         }
         setShowDeleteModal(false);
     };
+
 
     const renderMessage = ({ item }) => {
         const isCurrentUser = item.senderId === currentUser.id;
@@ -204,10 +209,15 @@ const ChatUser = ({ route }) => {
                     ]}
                 >
                     <Text style={styles.messageText}>{item.message}</Text>
-                    <Text style={{ color: 'white', marginLeft: 'auto', marginTop: 10 }}>
-                        {moment(item.timestamp).format('h:mm A')}
-                    </Text>
-                </View>
+                  
+                   
+                        <Text style={{ color: 'black', fontSize: 12,  marginLeft:'auto'}}>
+                      
+                            {moment(item.timestamp).format('h:mm A')}
+                        </Text>
+                    </View>
+
+          
             </TouchableOpacity>
         );
     };
@@ -221,7 +231,9 @@ const ChatUser = ({ route }) => {
     }
 
     return (
+        
         <View style={styles.container}>
+            <ScrollView showsVerticalScrollIndicator={false}>
             <FlatList
                 data={messages}
                 ref={flatListRef}
@@ -229,6 +241,8 @@ const ChatUser = ({ route }) => {
                 renderItem={renderMessage}
                 style={styles.messageList}
             />
+        </ScrollView>
+
             <View style={styles.inputContainer}>
                 <TextInput
                     style={styles.input}
@@ -236,6 +250,7 @@ const ChatUser = ({ route }) => {
                     value={message}
                     onChangeText={setMessage}
                 />
+
                 <TouchableOpacity style={styles.sendButton} onPress={sendMessage}>
                     <MaterialCommunityIcons size={30} name="send" />
                 </TouchableOpacity>
@@ -265,6 +280,7 @@ const ChatUser = ({ route }) => {
                 </Modal>
             )}
         </View>
+
     );
 };
 
@@ -273,25 +289,44 @@ const styles = StyleSheet.create({
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     profileImage: { height: 40, width: 40, borderRadius: 20, marginRight: 10 },
     messageList: { flex: 1, marginBottom: 10 },
-    inputContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
+    inputContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 20, borderRadius: 10 },
     input: {
         flex: 1,
         height: 40,
         borderColor: '#ccc',
         borderWidth: 1,
-        borderRadius: 5,
+        borderRadius: 20,
         paddingHorizontal: 10,
-        marginRight: -50,
+        marginRight: -0,
+
     },
     sendButton: { padding: 10, borderRadius: 5 },
     sendButtonText: { color: '#fff', fontWeight: 'bold' },
-    messageContainer: { flexDirection: 'row', marginVertical: 5, alignItems: 'center' },
+    messageContainer: { flexDirection: 'row', marginVertical: 5, alignItems: 'center', },
     currentUserContainer: { justifyContent: 'flex-end', flexDirection: 'row' },
     otherUserContainer: { justifyContent: 'flex-start', flexDirection: 'row' },
     messageBubble: { padding: 10, borderRadius: 10, maxWidth: '70%' },
-    currentUserBubble: { backgroundColor: 'black', alignSelf: 'flex-end' },
-    otherUserBubble: { backgroundColor: 'red', alignSelf: 'flex-start' },
-    messageText: { fontSize: 16, color: '#fff' },
+    currentUserBubble: {
+        alignSelf: 'flex-start',
+        backgroundColor: 'white',
+        borderRadius: 10,
+        elevation: 5, // For Android
+        shadowColor: '#000', // For iOS
+        shadowOffset: { width: 0, height: 2 }, // For iOS
+        shadowOpacity: 0.1, // For iOS
+        shadowRadius: 3.84,
+    },
+    otherUserBubble: {
+        alignSelf: 'flex-start',
+        backgroundColor: '#d2d4d2',
+        borderRadius: 10,
+        elevation: 5, // For Android
+        shadowColor: '#000', // For iOS
+        shadowOffset: { width: 0, height: 2 }, // For iOS
+        shadowOpacity: 0.1, // For iOS
+        shadowRadius: 1.4,
+    },
+    messageText: { fontSize: 16, color: 'black' },
     modalContainer: {
         flex: 1,
         justifyContent: 'center',
@@ -305,7 +340,7 @@ const styles = StyleSheet.create({
         padding: 20,
         alignItems: 'center',
     },
-    modalText: { fontSize: 18, marginBottom: 20 },
+    modalText: { fontSize: 18, marginBottom: 20, },
     modalButtons: { flexDirection: 'row', justifyContent: 'space-between', width: '100%' },
     cancelButton: { fontSize: 16, color: 'grey' },
     deleteButton: { fontSize: 16, color: 'red' },

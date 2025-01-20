@@ -150,17 +150,17 @@ app.get('/messages', async (req, res) => {
         }).sort({ timestamp: 1 }); // Sort by timestamp in ascending order (oldest first)
 
         // Populate sender information for each message
-   const messagesWithProfile = await Promise.all(
-    messages.map(async(msg)=>{
-       const sender = await User.findById(msg.senderId).sort('name, profileImage')
-        return{
-            ...msg._doc,
-            senderName:sender?.name||'unknow',
-            profileImage :sender?.profileImage|| 'dd'
-            
-        }
-    })
-   )
+        const messagesWithProfile = await Promise.all(
+            messages.map(async (msg) => {
+                const sender = await User.findById(msg.senderId).sort('name, profileImage')
+                return {
+                    ...msg._doc,
+                    senderName: sender?.name || 'unknow',
+                    profileImage: sender?.profileImage || 'dd'
+
+                }
+            })
+        )
         if (!messagesWithProfile || messagesWithProfile.length === 0) {
             return res.status(404).json({ message: 'No messages found' });
         }
@@ -171,22 +171,19 @@ app.get('/messages', async (req, res) => {
         res.status(500).json({ message: 'Error fetching messages', error: error.message });
     }
 });
-app.delete('messages/:messagesId' , async(req, res)=>{
-    const {messageId} = req.params
+// On backend (Express) for handling message deletion
+app.delete('/messages/:id', async (req, res) => {
     try {
-const DeleteMessage = await Message.findByIdAndDelete(messageId);
-
-
-        
-        if (!DeleteMessage) {
-            return res.status(404).json({ message: 'Message not found' });
+        const message = await Message.findByIdAndDelete(req.params.id);
+        if (!message) {
+            return res.status(404).json({ status: 'error', message: 'Message not found' });
         }
-
-        res.status(200).json({ message: 'Message deleted successfully' });
-    } catch (error) {
-        console.error('Error deleting message:', error);
+        res.status(200).json({ status: 'ok' });
+    } catch (err) {
+        console.error('Error deleting message:', err);
+        res.status(500).json({ status: 'error', message: 'Failed to delete message' });
     }
-})
+});
 
 
 
