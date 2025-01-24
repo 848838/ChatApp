@@ -6,7 +6,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
 import Icon from 'react-native-vector-icons/Ionicons';
-import AntDesign from 'react-native-vector-icons/AntDesign';
+import Entypo from 'react-native-vector-icons/Entypo';
 
 import Login from '../Auth/Login';
 import Signup from '../Auth/Signup';
@@ -47,46 +47,41 @@ const BottomTabNavigator = ({ route }) => {
   }
 
   return (
-    <Tab.Navigator
-      screenOptions={({ route }) => ({
-        headerShown: false, // Remove header for all tab screens
-        tabBarStyle: styles.tabBar,
-        tabBarLabel: ({ focused }) => (
-          <View style={styles.tabLabelContainer}>
-            <Text style={[styles.tabLabel, focused && styles.focusedLabel]}>
-              {route.name}
-            </Text>
-            {focused && <View style={styles.focusedUnderline} />}
-          </View>
-        ),
-        tabBarIcon: ({ color, size, focused }) => {
-          if (route.name === 'Main') {
-            return <Icon name="home-outline" size={size} color={color} />;
-          } else if (route.name === 'Profile') {
-            return profileImage ? (
-              <Image
-                source={{ uri: profileImage }}
-                style={{
-                  width: 30,
-                  height: 30,
-                  borderRadius: 15,
-                  borderWidth: 2,
-                  borderColor: color,
-                  marginTop:39
-                }}
-              />
-            ) : (
-              <Icon name="person-outline" size={size} color={color} />
-            );
-          }
-        },
-        tabBarIconStyle: { marginTop: -5 },
-        tabBarLabelStyle: { marginTop: -10 },
-      })}
-    >
-      <Tab.Screen options={{headerShown:true}} name="Home" component={Main} />
-      <Tab.Screen  name="Profile" component={Profile} />
-    </Tab.Navigator>
+<Tab.Navigator
+  screenOptions={({ route }) => ({
+    headerShown: false, // Remove header for all tab screens
+    tabBarStyle: styles.tabBar,
+    tabBarLabel: () => null, // Hide tab label (this will remove all text labels)
+    tabBarIcon: ({ color, size, focused }) => {
+      if (route.name === 'Home') {
+        return <Entypo name="home" style={{marginTop:30, height:'100%'}} size={30} color={'black'} />; // Home icon from Entypo
+      } else if (route.name === 'Profile') {
+        return profileImage ? (
+          <Image
+            source={{ uri: profileImage }}
+            style={{
+              width: 30,
+              height: 30,
+              borderRadius: 15,
+              borderWidth: 2,
+              borderColor: color,
+              marginTop: 39,
+            }}
+          />
+        ) : (
+          <Icon name="person-outline" size={size} color={color} />
+        );
+      }
+    },
+    tabBarIconStyle: { marginTop: -10 },
+    tabBarLabelStyle: { marginTop:-10 },
+  })}
+>
+  <Tab.Screen name="Home" component={Main} />
+  <Tab.Screen name="Profile" component={Profile} />
+</Tab.Navigator>
+
+  
   );
 };
 

@@ -3,7 +3,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, FlatList, StyleSheet, Image, Modal, TouchableWithoutFeedback } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
-import io from 'socket.io-client';
 import Entypo from 'react-native-vector-icons/Entypo';
 
 const Main = () => {
@@ -17,25 +16,48 @@ const Main = () => {
     const socketRef = useRef(null);
 
     // Fetch all users to display
-    useEffect(() => {
-        const fetchUsers = async () => {
-            try {
-                const token = await AsyncStorage.getItem('authtoken');
-                const response = await fetch('http://localhost:5000/users', {
-                    headers: { Authorization: `Bearer ${token}` },
-                });
+    const fetchUsers = async () => {
+        try {
+            const token = await AsyncStorage.getItem('authtoken');
+            const response = await fetch('http://localhost:5000/users', {
+                headers: { Authorization: `Bearer ${token}` },
+            });
 
-                const data = await response.json();
-                setUsers(data.users); // Store the list of users
-            } catch (error) {
-                console.error('Error fetching users:', error);
+            const data = await response.json();
+            let usersList = data.users;
+
+            // Step 1: Check if there's a recent user and move them to the top
+            const recentUserId = await AsyncStorage.getItem('recentUserId');
+            if (recentUserId) {
+                const recentUserIndex = usersList.findIndex(user => user._id === recentUserId);
+                if (recentUserIndex > -1) {
+                    const recentUser = usersList[recentUserIndex];
+                    // Move the recent user to the top
+                    usersList = [recentUser, ...usersList.filter(user => user._id !== recentUserId)];
+                    console.log("Recent user moved to top:", recentUser);
+                }
             }
-        };
 
-        fetchUsers();
+            // Step 2: Sort users based on last message timestamp
+            usersList.sort((a, b) => {
+                const lastMessageA = getLastMessage(a._id);
+                const lastMessageB = getLastMessage(b._id);
+                return new Date(lastMessageB.timestamp) - new Date(lastMessageA.timestamp); // Sort in descending order
+            });
+
+            setUsers(usersList); // Update the state with the sorted list
+        } catch (error) {
+            console.error('Error fetching users:', error);
+        }
+    };
+
+
+    // Use effect to fetch users when the component mounts
+    useEffect(() => {
+        fetchUsers()
     }, []);
 
-    // Fetch current user
+    // Fetch current user data
     useEffect(() => {
         const fetchCurrentUser = async () => {
             try {
@@ -58,53 +80,7 @@ const Main = () => {
         fetchCurrentUser();
     }, []);
 
-    // Initialize socket and listen for incoming messages
-    useEffect(() => {
-        if (currentUser) {
-            socketRef.current = io('http://localhost:5000');
-
-            socketRef.current.on('message', (data) => {
-                setMessages((prevMessages) => {
-                    const newMessages = [
-                        ...prevMessages,
-                        {
-                            message: data.message,
-                            senderName: data.senderName,
-                            profileImage: data.profileImage,
-                            senderId: data.senderId,
-                            receiverId: data.receiverId,
-                        },
-                    ];
-
-                    // Save new messages to AsyncStorage
-                    AsyncStorage.setItem('messages', JSON.stringify(newMessages));
-                    return newMessages;
-                });
-            });
-
-            return () => {
-                socketRef.current.disconnect();
-            };
-        }
-    }, [currentUser]);
-
-    // Fetch messages when the selected user is set
-    useEffect(() => {
-        const fetchMessagesFromStorage = async () => {
-            try {
-                const savedMessages = await AsyncStorage.getItem('messages');
-                if (savedMessages) {
-                    setMessages(JSON.parse(savedMessages)); // Restore messages from storage
-                }
-            } catch (error) {
-                console.error('Error fetching messages from storage:', error);
-            }
-        };
-
-        fetchMessagesFromStorage();
-    }, []);
-
-    // Fetch messages from the server when a user is selected
+    // Fetch messages when selectedUser is set
     useEffect(() => {
         const fetchMessages = async () => {
             try {
@@ -132,39 +108,37 @@ const Main = () => {
 
     // Handle selecting a user to chat with
     const handleSelectUser = (user) => {
+        console.log('Selected User:', user);
         setSelectedUser(user); // Set selectedUser to be used in modal
+
+        // Save the recent user interaction to AsyncStorage
+        AsyncStorage.setItem('recentUserId', user._id);
+
         navigation.navigate('Chatuser', { selectedUser: user });
     };
 
     // Get last message for each user
-    // Get last message for each user
     const getLastMessage = (userId) => {
         if (!Array.isArray(messages)) {
-            return 'No messages'; // Return a default message if messages is not an array
+            return { message: 'No messages', timestamp: 0 }; // Return a default message and timestamp if no messages
         }
 
         const userMessages = messages.filter(
             (msg) => msg.receiverId === userId || msg.senderId === userId
         );
-        const lastMessage = userMessages.length > 0 ? userMessages[userMessages.length - 1] : null;
-        return lastMessage ? lastMessage.message : 'Chat with him';
-    };
-    const getLatetMessage = (userId) => {
-        if (!Array.isArray(messages)) {
-            return 'No messages'; // Return a default message if messages is not an array
+        if (userMessages.length === 0) {
+            return { message: 'Chat with them', timestamp: 0 }; // No messages for this user
         }
 
-        const userMessages = messages.filter(
-            (msg) => msg.receiverId === userId
-        );
-        const lastestMessage = userMessages.length > 0 ? userMessages[userMessages.length - messages] : null;
+        const lastMessage = userMessages[userMessages.length - 1];
+        const timestamp = lastMessage.timestamp ? new Date(lastMessage.timestamp) : new Date();
+        return { message: lastMessage.message || 'No message content', timestamp };
     };
 
 
     // Open image modal
-    const openImageModal = (imageUrl, user) => {
-        setSelectedImage(imageUrl);
-        setSelectedUser(user); // Set selectedUser for modal use
+    const openImageModal = (image, user) => {
+        setSelectedImage(image);
         setImageModalVisible(true);
     };
 
@@ -172,17 +146,16 @@ const Main = () => {
     const closeImageModal = () => {
         setImageModalVisible(false);
         setSelectedImage(null);
-        setSelectedUser(null); // Reset selectedUser when modal is closed
     };
 
     return (
         <SafeAreaView style={styles.container}>
             <FlatList
                 data={users}
+                extraData={users}  // Ensure this triggers re-render when users state changes
                 keyExtractor={(item) => item._id}
                 renderItem={({ item }) => {
                     const lastMessage = getLastMessage(item._id);
-                    const lastnewMessage = getLatetMessage(item._id);
                     return (
                         <TouchableOpacity
                             style={styles.userItem}
@@ -198,7 +171,7 @@ const Main = () => {
                                 </TouchableOpacity>
                                 <View style={{ marginLeft: 15 }}>
                                     <Text style={{ fontWeight: 'bold' }}>{item.name}</Text>
-                                    <Text style={{ color: 'green', padding: 1, width: 240 }}>{lastMessage}</Text>
+                                    <Text style={{ color: 'green', padding: 1, width: 240 }}>{lastMessage.message}</Text>
                                 </View>
                                 <View style={{ marginLeft: 'auto' }}>
                                     <Entypo style={{ marginTop: 6 }} size={20} name='dots-three-vertical' />
@@ -227,7 +200,7 @@ const Main = () => {
 };
 
 const styles = StyleSheet.create({
-    container: { flex: 1, marginTop: -40, },
+    container: { flex: 1, marginTop: -40 },
     userItem: { padding: 10, marginVertical: 5, borderRadius: 5 },
     userName: { fontSize: 16 },
     modalBackground: {
@@ -235,13 +208,6 @@ const styles = StyleSheet.create({
         justifyContent: 'center',
         alignItems: 'center',
         backgroundColor: 'whitesmoke',
-
-        // Add semi-transparent black background
-    },
-    fullScreenImage: {
-        width: '80%', // Adjust the width as needed
-        height: '80%', // Adjust the height as needed
-        resizeMode: 'contain',
     },
 });
 

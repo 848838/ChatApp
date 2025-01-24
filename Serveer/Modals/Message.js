@@ -13,8 +13,11 @@ const messageSchema = new mongoose.Schema({
     },
     message: {
         type: String,
-        required: true
+
     },
+    imageUri: { type: String, required: false }, // Optional field for image or file URL
+
+
     timestamp: {
         type: Date,
         default: Date.now
