@@ -13,6 +13,7 @@ import Signup from '../Auth/Signup';
 import Main from '../Components/Main';
 import Profile from '../Components/Profile';
 import Chatuser from '../Components/Chatuser';
+import OtherUserprofile from '../Components/OtherUserprofile';
 
 const Tab = createBottomTabNavigator();
 const Stack = createStackNavigator();
@@ -47,41 +48,41 @@ const BottomTabNavigator = ({ route }) => {
   }
 
   return (
-<Tab.Navigator
-  screenOptions={({ route }) => ({
-    headerShown: false, // Remove header for all tab screens
-    tabBarStyle: styles.tabBar,
-    tabBarLabel: () => null, // Hide tab label (this will remove all text labels)
-    tabBarIcon: ({ color, size, focused }) => {
-      if (route.name === 'Home') {
-        return <Entypo name="home" style={{marginTop:30, height:'100%'}} size={30} color={'black'} />; // Home icon from Entypo
-      } else if (route.name === 'Profile') {
-        return profileImage ? (
-          <Image
-            source={{ uri: profileImage }}
-            style={{
-              width: 30,
-              height: 30,
-              borderRadius: 15,
-              borderWidth: 2,
-              borderColor: color,
-              marginTop: 39,
-            }}
-          />
-        ) : (
-          <Icon name="person-outline" size={size} color={color} />
-        );
-      }
-    },
-    tabBarIconStyle: { marginTop: -10 },
-    tabBarLabelStyle: { marginTop:-10 },
-  })}
->
-  <Tab.Screen name="Home" component={Main} />
-  <Tab.Screen name="Profile" component={Profile} />
-</Tab.Navigator>
+    <Tab.Navigator
+      screenOptions={({ route }) => ({
+        headerShown: false, // Remove header for all tab screens
+        tabBarStyle: styles.tabBar,
+        tabBarLabel: () => null, // Hide tab label (this will remove all text labels)
+        tabBarIcon: ({ color, size, focused }) => {
+          if (route.name === 'Home') {
+            return <Entypo name="home" style={{ marginTop: 30, height: '100%' }} size={30} color={'black'} />; // Home icon from Entypo
+          } else if (route.name === 'Profile') {
+            return profileImage ? (
+              <Image
+                source={{ uri: profileImage }}
+                style={{
+                  width: 30,
+                  height: 30,
+                  borderRadius: 15,
+                  borderWidth: 2,
+                  borderColor: color,
+                  marginTop: 39,
+                }}
+              />
+            ) : (
+              <Icon name="person-outline" size={size} color={color} />
+            );
+          }
+        },
+        tabBarIconStyle: { marginTop: -10 },
+        tabBarLabelStyle: { marginTop: -10 },
+      })}
+    >
+      <Tab.Screen name="Home" component={Main} />
+      <Tab.Screen name="Profile" component={Profile} />
+    </Tab.Navigator>
 
-  
+
   );
 };
 
@@ -96,6 +97,7 @@ const Stacknavigation = () => {
         <Stack.Screen name="Login" component={Login} />
         <Stack.Screen name="Signup" component={Signup} />
         <Stack.Screen name="Chatuser" component={Chatuser} />
+        <Stack.Screen name="OtherUserprofile" component={OtherUserprofile} />
         <Stack.Screen options={{ headerShown: false }} name="Main" component={BottomTabNavigator} />
       </Stack.Navigator>
     </NavigationContainer>

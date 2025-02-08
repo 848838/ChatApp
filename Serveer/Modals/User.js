@@ -25,6 +25,11 @@ const userSchema = new mongoose.Schema({
     profession: {
         type: String, // Same goes for this field, adjust type as needed
     },
+    lastOnline: {
+        type: Date,
+        default: null, // Set to null initially
+    },
+    stories: { type: [String], default: [] }, // Ensure stories is an array
     verificationToken: {
         type: String,
     },

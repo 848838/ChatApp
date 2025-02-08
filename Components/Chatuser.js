@@ -1,14 +1,13 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useState, useEffect, useRef, useLayoutEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, Image, ActivityIndicator, Modal ,Button } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, FlatList, StyleSheet, Image, ActivityIndicator, Modal, Button } from 'react-native';
 import io from 'socket.io-client';
 import { useNavigation } from '@react-navigation/native';
 import moment from 'moment';
 import MaterialCommunityIcons from 'react-native-vector-icons/MaterialCommunityIcons';
 import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
-import { Swipeable } from 'react-native-gesture-handler';
 import * as ImagePicker from 'react-native-image-picker';
-import { Screen } from '@react-navigation/elements';
+import EmojiSelector from 'react-native-emoji-selector';
 
 const ChatUser = ({ route }) => {
     const { selectedUser } = route.params;
@@ -18,14 +17,17 @@ const ChatUser = ({ route }) => {
     const [loading, setLoading] = useState(true);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [selectedMessage, setSelectedMessage] = useState(null);
-    const [touchedMessage, setTouchedMessage] = useState(null);
     const [image, setImage] = useState(null);
-    const [modalVisible, setModalVisible] = useState(false);
+    const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+
+
+    const [lastOnline, setLastOnline] = useState(null);
 
     const flatListRef = useRef(null);
+    const socketRef = useRef(null);
     const navigation = useNavigation();
-    let socketRef = useRef(null);
 
+    // Fetch current user data
     useEffect(() => {
         const fetchCurrentUser = async () => {
             try {
@@ -49,10 +51,16 @@ const ChatUser = ({ route }) => {
         fetchCurrentUser();
     }, []);
 
+    // Initialize socket and fetch messages when currentUser and selectedUser are available
     useEffect(() => {
         if (currentUser && selectedUser) {
             socketRef.current = io('http://localhost:5000');
 
+            // Emit the current user's online status
+            socketRef.current.emit('userOnline', currentUser.id);  // Emit userOnline event
+
+
+            // Fetch messages
             const fetchMessages = async () => {
                 try {
                     const token = await AsyncStorage.getItem('authtoken');
@@ -60,7 +68,6 @@ const ChatUser = ({ route }) => {
                         method: 'GET',
                         headers: { Authorization: `Bearer ${token}` },
                     });
-
                     const data = await response.json();
                     if (data.messages) {
                         setMessages(data.messages);
@@ -79,10 +86,12 @@ const ChatUser = ({ route }) => {
             });
 
             return () => {
-                socketRef.current.disconnect();
+                socketRef.current.disconnect(); // Cleanup on unmount
             };
         }
     }, [currentUser, selectedUser]);
+
+    // Update navigation header with last online status
     useLayoutEffect(() => {
         navigation.setOptions({
             headerTitle: '',
@@ -90,23 +99,51 @@ const ChatUser = ({ route }) => {
                 <View style={{ flexDirection: 'row', alignSelf: 'center' }}>
                     <TouchableOpacity
                         onPress={() => navigation.navigate('Main', { user: selectedUser })}
-                        style={{ marginRight: 10, }}
+                        style={{ marginRight: 10 }}
                     >
                         <MaterialIcons name="arrow-back" size={30} color="black" />
                     </TouchableOpacity>
-                    <Image style={{ width: 30, height: 30, borderRadius: 40 }} source={{ uri: selectedUser.profileImage }} />
-                    <Text style={{ fontWeight: 'bold', fontSize: 18, marginTop: 3, marginLeft: 10 }}>{selectedUser.name}</Text>
+                    <Image style={{ width: 35, height: 35, borderRadius: 40 }} source={{ uri: selectedUser.profileImage }} />
+                    <View>
+                        <TouchableOpacity
+                            onPress={() => navigation.navigate('OtherUserprofile', {
+                                id: selectedUser.id,
+                                name: selectedUser.name,
+                                profileImage: selectedUser.profileImage,
+                                profession: selectedUser.profession,
+                                imageUri: selectedUser.imageUri, // Pass the imageUri as well
+                                selectedUser: selectedUser,
+                                lastOnline: lastOnline
+                            })}
+                        >
 
-                </View>
+
+
+
+                            <Text style={{ fontWeight: 'bold', fontSize: 18, marginTop: 1, marginLeft: 10 }}>{selectedUser.name}</Text>
+                            <Text style={{ fontSize: 14, color: 'green', marginLeft: 10, marginBottom: 10 }}>
+                                {lastOnline ? ` ${'Last online:', lastOnline}` : 'Online'}
+                            </Text>
+
+                        </TouchableOpacity>
+                    </View>
+
+
+                </View >
             ),
-        })
-    })
+        });
+    }, [selectedUser, lastOnline]);
+
+    // Scroll to bottom when new messages arrive
     useEffect(() => {
-        if (flatListRef.current && messages.length > 0) {
-            flatListRef.current.scrollToEnd({ animated: true });
+        if (messages.length > 0 && flatListRef.current) {
+            setTimeout(() => {
+                flatListRef.current.scrollToEnd({ animated: true });
+            }, 100); // Delay ensures layout updates
         }
     }, [messages]);
 
+    // Send message with optional image
     const sendMessage = async () => {
         if (!message.trim() && !image) return;
 
@@ -137,6 +174,9 @@ const ChatUser = ({ route }) => {
             if (data.status === 'ok') {
                 setMessage('');
                 setImage(null);
+                
+
+
             } else {
                 console.error('Failed to send message:', data.message);
             }
@@ -145,6 +185,7 @@ const ChatUser = ({ route }) => {
         }
     };
 
+    // Open image picker
     const selectImage = async () => {
         const options = { mediaType: 'photo', quality: 1 };
         ImagePicker.launchImageLibrary(options, (response) => {
@@ -157,6 +198,14 @@ const ChatUser = ({ route }) => {
             }
         });
     };
+
+    // Handle message long press to show delete modal
+    const handleLongPress = (message) => {
+        setSelectedMessage(message);
+        setShowDeleteModal(true);
+    };
+
+    // Delete message
     const deleteMessage = async (messageId) => {
         try {
             const token = await AsyncStorage.getItem('authtoken');
@@ -169,57 +218,77 @@ const ChatUser = ({ route }) => {
 
             const data = await response.json();
             if (data.status === 'ok') {
-                // Successfully deleted the message, now remove it from the state
                 setMessages((prevMessages) => prevMessages.filter((msg) => msg._id !== messageId));
-                setModalVisible(false); // Close the modal
+                setShowDeleteModal(false);
             } else {
                 console.error('Failed to delete message:', data.message);
-                setModalVisible(false); // Close the modal
             }
         } catch (error) {
             console.error('Error deleting message:', error);
-            setModalVisible(false); // Close the modal
+            setShowDeleteModal(false);
         }
     };
-    const handleLongPress = (message) => {
-        setSelectedMessage(message);
-        setModalVisible(true);
-    };
 
+    // Fetch and update user status last status
+    useEffect(() => {
+        const fetchUserStatus = async () => {
+            try {
+                const response = await fetch(`http://localhost:5000/user/${selectedUser.id}`);
+                const data = await response.json();
+                if (data.lastOnline) {
+                    setLastOnline(moment(data.lastOnline).fromNow());
+                } else {
+                    setLastOnline('Online'); // User is online if lastOnline is null
+                }
+            } catch (error) {
+                console.error('Error fetching user status:', error);
+            }
+        };
+
+        fetchUserStatus();
+
+        const interval = setInterval(fetchUserStatus, 1000);
+
+    }, [selectedUser]);
+
+    // Render message item
     const renderMessage = ({ item }) => {
         const isCurrentUser = item.senderId === currentUser.id;
         return (
             <View
-            style={[
-                styles.messageContainer,
-                isCurrentUser ? styles.currentUserContainer : styles.otherUserContainer,
-            ]}
-        >
-            {!isCurrentUser && (
-                <Image
-                    source={{ uri: item.profileImage || 'default.jpg' }}
-                    style={styles.profileImage}
-                />
-            )}
-            <TouchableOpacity
-                onLongPress={() => handleLongPress(item)}
                 style={[
-                    styles.messageBubble,
-                    isCurrentUser ? styles.currentUserBubble : styles.otherUserBubble,
+                    styles.messageContainer,
+                    isCurrentUser ? styles.currentUserContainer : styles.otherUserContainer,
                 ]}
             >
-                {item.message && <Text style={styles.messageText}>{item.message}</Text>}
-                {item.imageUri && (
+                {!isCurrentUser && (
                     <Image
-                        source={{ uri: item.imageUri }}
-                        style={{ height: 200, width: 200 }}
+                        source={{ uri: item.profileImage || 'default.jpg' }}
+                        style={styles.profileImage}
                     />
                 )}
-                <Text style={styles.timestamp}>
-                    {moment(item.timestamp).format('h:mm A')}
-                </Text>
-            </TouchableOpacity>
-        </View>
+                <TouchableOpacity
+                    onLongPress={() => handleLongPress(item)}
+                    style={[
+                        styles.messageBubble,
+                        isCurrentUser ? styles.currentUserBubble : styles.otherUserBubble,
+                    ]}
+                >
+                    <View>
+                        {item.imageUri && (
+                            <Image
+                                source={{ uri: item.imageUri }}
+                                style={{ height: 200, width: 200 }}
+                            />
+                        )}
+
+                        {item.message && <Text style={styles.messageText}>{item.message}</Text>}
+                    </View>
+                    <Text style={{ color: 'black', marginTop: 10, marginBottom: 1 }}>
+                        {moment(item.timestamp).format('h:mm A')}
+                    </Text>
+                </TouchableOpacity>
+            </View>
         );
     };
 
@@ -233,71 +302,94 @@ const ChatUser = ({ route }) => {
 
     return (
         <View style={styles.container}>
-            <FlatList
-                data={messages}
-                ref={flatListRef}
-                keyExtractor={(item, index) => index.toString()}
-                renderItem={renderMessage}
-                onContentSizeChange={() => flatListRef.current.scrollToEnd({ animated: true })}
-                onLayout={() => flatListRef.current.scrollToEnd({ animated: true })}
-            />
-            {
-                image && (
-                    <View style={styles.imagePreviewContainer}>
-                        <Image
-                            source={{ uri: image }}
-                            style={styles.imagePreview}
-                        />
-                        <TouchableOpacity onPress={() => setImage(null)} style={styles.closeButton}>
-                            <MaterialCommunityIcons name="close" size={24} color="white" />
-                        </TouchableOpacity>
-                    </View>
-                )
-            }
+            {messages.length === 0 ? (
+                <View style={styles.emptyMessageContainer}>
+                    <Text style={styles.emptyMessageText}>No chats yet! Start the conversation</Text>
+                </View>
+            ) : (
+                <FlatList
+                    data={messages}
+                    ref={flatListRef}
+                    keyExtractor={(item) => item._id}
+                    renderItem={renderMessage}
+                    onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: true })}
+                    onLayout={() => flatListRef.current?.scrollToEnd({ animated: true })}
+                    style={{ flex: 1 }}
+                />
+            )}
+
+            {image && (
+                <View style={styles.imagePreviewContainer}>
+                    <Image
+                        source={{ uri: image }}
+                        style={styles.imagePreview}
+                    />
+                    <TouchableOpacity onPress={() => setImage(null)} style={styles.closeButton}>
+                        <MaterialCommunityIcons name="close" size={24} color="white" />
+                    </TouchableOpacity>
+                </View>
+            )}
 
             <View style={styles.inputContainer}>
+                {/* Input field */}
                 <TextInput
                     style={styles.input}
-                    placeholder="Message"
+                    placeholder="Type a message..."
                     value={message}
                     onChangeText={setMessage}
                 />
+
+
                 <TouchableOpacity onPress={selectImage} style={styles.camera}>
                     <MaterialCommunityIcons name="camera" size={24} color="white" />
                 </TouchableOpacity>
+                {/* Emoji Button */}
+                <TouchableOpacity onPress={() => setShowEmojiPicker(!showEmojiPicker)} style={styles.emojiButton}>
+                    <MaterialIcons name="emoji-emotions" size={24} color="black" />
+                </TouchableOpacity>
+
+                {/* Send Button */}
                 <TouchableOpacity onPress={sendMessage} style={styles.sendButton}>
                     <MaterialCommunityIcons name="send" size={24} color="white" />
                 </TouchableOpacity>
             </View>
-            {selectedMessage && (
-                <Modal
-                    visible={modalVisible}
-                    animationType="slide"
-                    transparent={true}
-                    onRequestClose={() => setModalVisible(false)}
-                >
-                    <View style={styles.modalContainer}>
-                        <View style={styles.modalContent}>
-                            <Text style={styles.modalTitle}>Are you sure to delete this message ?</Text>
-                            <View style={{flexDirection:'row'}}> 
 
+            {/* Emoji Picker (Shown when toggled) */}
+            {showEmojiPicker && (
+                <View style={styles.emojiPicker}>
+                    <EmojiSelector
+                        onEmojiSelected={(emoji) => setMessage((prev) => prev + emoji)} // Append emoji to message
+                        showSearchBar={false}
+                        columns={8}
+                    />
+                </View>
+            )}
+
+
+            <Modal
+                visible={showDeleteModal}
+                animationType="slide"
+                transparent={true}
+                onRequestClose={() => setShowDeleteModal(false)}
+            >
+                <View style={styles.modalContainer}>
+                    <View style={styles.modalContent}>
+                        <Text style={styles.modalTitle}>Are you sure you want to delete this message?</Text>
+                        <View style={{ flexDirection: 'row' }}>
                             <Button
-                                title="Delete Message"
+                                title="Delete"
                                 color="red"
                                 onPress={() => deleteMessage(selectedMessage._id)}
-                                />
-                            <Button
-                                title="Cancel"
-                                onPress={() => setModalVisible(false)}
-                                />
-                                </View>
+                            />
+                            <Button title="Cancel" onPress={() => setShowDeleteModal(false)} />
                         </View>
                     </View>
-                </Modal>
-            )}
+                </View>
+            </Modal>
         </View>
     );
 };
+
 const styles = StyleSheet.create({
     container: {
         flex: 1,
@@ -308,7 +400,7 @@ const styles = StyleSheet.create({
 
     },
     messageContainer: {
-
+        margin: 4,
         flexDirection: 'row',
         marginBottom: 2,
         marginRight: 10,
@@ -348,7 +440,7 @@ const styles = StyleSheet.create({
     },
     messageText: {
         fontSize: 16,
-
+        marginTop: 10,
     },
     inputContainer: {
         flexDirection: 'row',
@@ -454,11 +546,35 @@ const styles = StyleSheet.create({
         alignItems: 'center',
     },
     modalTitle: {
-        flexDirection:'row',
+        flexDirection: 'row',
         fontSize: 18,
         fontWeight: 'bold',
         marginBottom: 20,
     },
+    emptyMessageContainer: {
+        flex: 1,
+        justifyContent: 'center',
+        alignItems: 'center',
+    },
+    emptyMessageText: {
+        fontSize: 28,
+        color: '#999',
+        fontStyle: 'italic',
+        textAlign: 'center'
+    },
+    emojiButton: {
+        marginLeft: 10,
+        backgroundColor: '#f0f0f0',
+        borderRadius: 20,
+        padding: 10,
+        marginTop: -20
+    },
+
+    emojiPicker: {
+        height: 250,
+        backgroundColor: '#fff',
+    },
+
 });
 
 export default ChatUser;

@@ -110,56 +110,105 @@ app.post('/userdata', async (req, res) => {
         return res.status(401).json({ error: "Invalid or expired token" });
     }
 });
-
+// const sendPushNotification = (receiverId, message) => {
+//     io.to(receiverId).emit('pushNotification', {
+//         title: 'New Message',
+//         message,
+//     });
+// };
 
 io.on('connection', (socket) => {
     console.log('A user connected:', socket.id);
 
+    socket.on('userOnline', async (userId) => {
+        if (userId) {
+            socket.userId = userId; // Store userId in the socket object
+            await User.findByIdAndUpdate(socket.userId, { lastOnline: null }); // Set lastOnline to null while they are online
+        }
+    });
+
     socket.on('sendMessage', async (messageData) => {
-        console.log(`Message received from ${socket.id}:`, messageData);
-
-        const { senderId, senderName, receiverId, message, imageUri } = messageData;
-
+        const { senderId, receiverId, message, imageUri } = messageData;
+    
         try {
-            // Fetch the sender's profile details
+            // Find sender and receiver from the database
             const sender = await User.findById(senderId).select('name profileImage');
-            if (!sender) {
-                console.error('Sender not found in database');
+            const receiver = await User.findById(receiverId).select('name profileImage');
+    
+            if (!sender || !receiver) {
+                console.error('Sender or Receiver not found in database');
                 return;
             }
-
-            // Save the message to the database
+    
+            // Create new message and save it
             const newMessage = new Message({
                 senderId,
                 receiverId,
                 message,
-                imageUri, // Include imageUri in the saved message
-                timestamp: new Date(), // Add current timestamp
+                imageUri,
+                timestamp: new Date(),
             });
-
+    
             await newMessage.save();
-
-            // Broadcast the message, including sender's profile details
-            socket.broadcast.emit('message', {
-                message: newMessage.message,
+    
+            // Emit the message to the receiver
+            io.to(receiverId).emit('newMessage', {
+                _id: newMessage._id,
+                senderId,
                 senderName: sender.name,
-                senderId: sender._id,
                 receiverId,
-                imageUri: newMessage.imageUri, // Include the image URL
-                profileImage: sender.profileImage, // Include the profile image
+                message: newMessage.message,
+                imageUri: newMessage.imageUri,
+                profileImage: sender.profileImage,
                 timestamp: newMessage.timestamp,
             });
-
-            console.log('Message saved and broadcasted with profile details:', newMessage);
+    
+            // Optionally emit confirmation to sender
+            io.to(senderId).emit('messageSentConfirmation', { status: 'Message sent successfully' });
+    
+            console.log('Message saved and sent:', newMessage);
         } catch (error) {
             console.error('Error handling sendMessage event:', error);
         }
     });
+    
+    
 
+    
+    socket.on('disconnect', async () => {
+        console.log('User disconnected:', socket.id);
 
-    socket.on('disconnect', () => {
-        console.log('A user disconnected:', socket.id);
+        if (socket.userId) {
+            // Set lastOnline when the user is truly offline
+            await User.findByIdAndUpdate(socket.userId, { lastOnline: new Date() });
+            console.log(`Updated last online for user ${socket.userId}`);
+        }
     });
+});
+
+app.get('/user/:id', async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id).select('name profileImage lastOnline');
+        if (!user) return res.status(404).json({ error: 'User not found' });
+
+        res.json(user);
+    } catch (error) {
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+app.get('/messages/images', async (req, res) => {
+    try {
+        const { userId } = req.query;
+        const messages = await Message.find({
+            $or: [{ senderId: userId }, { receiverId: userId }],
+            imageUri: { $ne: null }
+        }).sort({ timestamp: -1 });
+
+        res.json({ status: 'ok', images: messages });
+    } catch (error) {
+        res.status(500).json({ status: 'error', message: error.message });
+    }
 });
 
 
@@ -210,9 +259,63 @@ app.post('/sendMessageWithImage', upload.single('image'), async (req, res) => {
         res.status(500).json({ status: 'error', message: 'Failed to send message with image', error: error.message });
     }
 });
+app.post('/Stories', upload.single('stories'), async (req, res) => {
+    const { userId } = req.body;
 
+    if (!userId) {
+        return res.status(400).json({ message: 'User ID is required' });
+    }
 
+    if (!req.file) {
+        return res.status(400).json({ message: 'Story image is required' });
+    }
 
+    try {
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        const storiesUri = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+
+        // Ensure stories is an array before pushing
+        if (!Array.isArray(user.stories)) {
+            user.stories = [];
+        }
+
+        user.stories.push(storiesUri); // Append the new story
+        await user.save();
+
+        io.emit('stories', { userId, stories: user.stories });
+
+        res.status(200).json({ status: 'ok', stories: user.stories });
+    } catch (error) {
+        console.error('Error saving stories:', error);
+        res.status(500).json({ status: 'error', message: 'Failed to save stories', error: error.message });
+    }
+});
+
+app.get('/stories', async (req, res) => {
+    try {
+        const users = await User.find().select('stories name profileImage');
+        
+        // Ensure we send stories for all users, not just the logged-in user
+        const allStories = users.map(user => ({
+            userId: user._id,
+            stories: user.stories.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)), // Sort by timestamp (most recent first)
+            profileImage: user.profileImage,
+            name: user.name,
+        })).sort((a, b) => b.stories[0]?.timestamp - a.stories[0]?.timestamp); // Sort users by the most recent story
+
+        res.status(200).json({
+            status: 'ok',
+            stories: allStories,
+        });
+    } catch (error) {
+        console.error('Error fetching stories:', error);
+        res.status(500).json({ status: 'error', message: 'Failed to fetch stories', error: error.message });
+    }
+});
 
 
 // Fetch messages between users
@@ -286,7 +389,7 @@ app.delete('/messages/:id', async (req, res) => {
         if (message.senderId.toString() !== userId && message.receiverId.toString() !== userId) {
             return res.status(403).json({ status: 'error', message: 'You cannot delete this message' });
         }
-
+io.emit('messageDeleted', req.params.id); // Broadcasting the deleted message ID
         // Delete the message
         await message.deleteOne();
         res.status(200).json({ status: 'ok', message: 'Message deleted' });
@@ -333,8 +436,6 @@ app.put('/updateprofile', upload.single('profileImage'), async (req, res) => {
         res.status(500).json({ message: 'Error updating profile', error: error.message });
     }
 });
-
-
 
 
 //fetch other users in server

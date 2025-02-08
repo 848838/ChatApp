@@ -6,11 +6,12 @@ import { launchImageLibrary } from 'react-native-image-picker';
 import Entypo from 'react-native-vector-icons/Entypo'
 import AntDesign from 'react-native-vector-icons/AntDesign'
 import Ionicons from 'react-native-vector-icons/Ionicons'
+import { useNavigation } from '@react-navigation/native';
 const Profile = () => {
     const [userData, setUserData] = useState(null);
     const [editing, setEditing] = useState(false);
     const [updatedData, setUpdatedData] = useState({ name: '', profession: '', profileImage: null });
-
+    const navigation = useNavigation()
     // Fetch current user data
     useEffect(() => {
         const fetchUserData = async () => {
@@ -100,6 +101,13 @@ const Profile = () => {
             </View>
         );
     }
+    const signout = () => {
+        const signout = AsyncStorage.removeItem('authtoken');
+        if (signout) {
+            navigation.navigate('Login')
+            Alert.alert('Logged out successfully')
+        }
+    }
 
     return (
         <SafeAreaView style={styles.container}>
@@ -120,7 +128,7 @@ const Profile = () => {
                         }}
                         style={styles.profileImage}
                     />
-                    <Entypo name='plus' color="white" size={39} style={{marginTop:1,marginLeft:1 ,position:'absolute' , backgroundColor:'rgba(0, 0, 0, 0.417)', padding:55,  borderRadius:100}}/>
+                    <Entypo name='plus' color="white" size={39} style={{ marginTop: 1, marginLeft: 1, position: 'absolute', backgroundColor: 'rgba(0, 0, 0, 0.417)', padding: 55, borderRadius: 100 }} />
                 </TouchableOpacity>
             </View>
 
@@ -157,10 +165,14 @@ const Profile = () => {
                                 <Text style={{ fontWeight: '600', fontSize: 20, marginLeft: 10 }}>{userData.profession || 'Not specified'}</Text>
 
                             </View>
+
                         </View>
 
                     </>
                 )}
+                <TouchableOpacity style={{ backgroundColor: '#c0fac7', padding: 10, borderRadius: 10, width: 200, alignSelf: 'center', marginTop: 350 }} onPress={signout}>
+                    <Text style={{ fontWeight: 'bold', textAlign: 'center' }}>Signout</Text>
+                </TouchableOpacity>
             </View>
 
 
@@ -172,7 +184,7 @@ const styles = StyleSheet.create({
     container: { flex: 1, padding: 20, backgroundColor: '#f8f8f8' },
     loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
     header: { alignItems: 'center', marginBottom: 20 },
-    profileImage: { width: 150, height: 150, borderRadius: 100, backgroundColor:"red"},
+    profileImage: { width: 150, height: 150, borderRadius: 100, backgroundColor: "red" },
     infoContainer: { marginBottom: 20 },
     infoValue: { fontSize: 16, color: 'black', marginBottom: 10 },
     input: { borderWidth: 1, borderColor: '#ddd', padding: 10, marginBottom: 10, borderRadius: 5 },
